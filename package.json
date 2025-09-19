@@ -1,0 +1,16 @@
+{
+    "name": "radiant-cloud",
+    "main": "index.ts",
+    "scripts": {
+        "format": "npx @biomejs/biome format --write index.ts"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/aws": "^7.0.0",
+        "@pulumi/awsx": "^3.0.0",
+        "@pulumi/pulumi": "^3.113.0"
+    }
+}
