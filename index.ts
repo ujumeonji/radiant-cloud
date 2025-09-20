@@ -56,6 +56,25 @@ const lifecyclePolicy = new aws.ecr.LifecyclePolicy("radiant-cloud-lifecycle", {
   }),
 });
 
+const rdsInstance = new aws.rds.Instance("radiant-db", {
+  identifier: "radiant-db",
+  engine: "postgres",
+  engineVersion: "15.7",
+  instanceClass: "db.t3.micro",
+  allocatedStorage: 20,
+  dbName: "radiant",
+  username: "radiantuser",
+  manageMasterUserPassword: true,
+  publiclyAccessible: true,
+  skipFinalSnapshot: true,
+  backupRetentionPeriod: 0,
+  deleteAutomatedBackups: true,
+  tags: {
+    Environment: "production",
+    Project: "radiant-cloud",
+  },
+});
+
 const appRunnerInstanceRole = new aws.iam.Role("apprunner-instance-role", {
   assumeRolePolicy: JSON.stringify({
     Version: "2012-10-17",
@@ -69,6 +88,27 @@ const appRunnerInstanceRole = new aws.iam.Role("apprunner-instance-role", {
       },
     ],
   }),
+});
+
+const secretsManagerPolicy = new aws.iam.Policy("secrets-manager-policy", {
+  policy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Action: [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+        ],
+        Resource: "*",
+      },
+    ],
+  }),
+});
+
+new aws.iam.RolePolicyAttachment("apprunner-secrets-access", {
+  role: appRunnerInstanceRole.name,
+  policyArn: secretsManagerPolicy.arn,
 });
 
 const appRunnerAccessRole = new aws.iam.Role("apprunner-access-role", {
@@ -101,6 +141,11 @@ const appRunnerService = new aws.apprunner.Service("radiant-api", {
         port: "8080",
         runtimeEnvironmentVariables: {
           SPRING_PROFILES_ACTIVE: "prod",
+          DB_HOST: rdsInstance.address,
+          DB_PORT: "5432",
+          DB_NAME: "radiant",
+          DB_USERNAME: "radiantuser",
+          DB_PASSWORD: "",
         },
       },
       imageRepositoryType: "ECR",
@@ -170,3 +215,10 @@ export const nameServers = hostedZone.nameServers;
 export const appRunnerServiceUrl = appRunnerService.serviceUrl;
 export const appRunnerServiceArn = appRunnerService.arn;
 export const customDomainUrl = "https://api.radiant.ink";
+export const databaseEndpoint = rdsInstance.endpoint;
+export const databasePort = rdsInstance.port;
+export const databaseName = rdsInstance.dbName;
+export const databaseUsername = rdsInstance.username;
+export const databaseSecretArn = rdsInstance.masterUserSecrets.apply(
+  (secrets: any) => (secrets && secrets.length > 0 ? secrets[0].secretArn : ""),
+);
